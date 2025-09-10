@@ -201,6 +201,23 @@ command! SpecFlowListBindings call SpecFlowListBindings()
 " Key mappings (only in feature files)
 augroup SpecFlowMappings
     autocmd!
-    autocmd FileType specflow nnoremap <buffer> <Leader>sb :SpecFlowJumpToBinding<CR>
-    autocmd FileType specflow nnoremap <buffer> <Leader>sl :SpecFlowListBindings<CR>
+    " Try multiple events to ensure the mapping takes
+    autocmd FileType specflow call s:SetupSpecFlowMappings()
+    autocmd BufRead,BufNewFile *.feature call s:SetupSpecFlowMappings()
 augroup END
+
+function! s:SetupSpecFlowMappings()
+    " Force override the built-in Ctrl-] mapping
+    " First try to unmap any existing mapping
+    silent! nunmap <buffer> <C-]>
+    silent! unmap <buffer> <C-]>
+    
+    " Now set our mapping
+    nnoremap <buffer> <silent> <C-]> :SpecFlowJumpToBinding<CR>
+    noremap <buffer> <silent> <C-]> :SpecFlowJumpToBinding<CR>
+    nnoremap <buffer> <Leader>sb :SpecFlowJumpToBinding<CR>
+    nnoremap <buffer> <Leader>sl :SpecFlowListBindings<CR>
+    
+    " Debug: echo to confirm mapping is set
+    echo "SpecFlow mappings applied to buffer"
+endfunction
