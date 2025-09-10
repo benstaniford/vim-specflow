@@ -16,6 +16,12 @@ A Vim plugin that provides syntax highlighting and binding navigation for SpecFl
   - Supports Given, When, Then, And, But steps
   - Searches through C# files for matching binding attributes
   - Pattern matching for parameterized steps
+  - Fast cached lookup system
+
+- **Automatic Error Highlighting**: Automatically highlights steps that don't have corresponding bindings
+  - Red background highlighting for unbound steps
+  - Automatic checking on file open and save
+  - Intelligent caching to avoid repeated filesystem scans
 
 ## Installation
 
@@ -52,20 +58,31 @@ Plugin 'vim-specflow'
 
 - `:SpecFlowJumpToBinding` - Jump to the C# binding for the step on the current line
 - `:SpecFlowListBindings` - List all SpecFlow bindings found in C# files
+- `:SpecFlowHighlightUnbound` - Manually highlight unbound steps
+- `:SpecFlowClearHighlight` - Clear step highlighting
+- `:SpecFlowClearCache` - Clear the binding cache (forces rescan)
 
 ### Key Mappings
 
 The following mappings are available in `.feature` files:
 
-- `<Leader>sb` - Jump to step binding
+- `Ctrl-]` - Jump to step binding (overrides built-in tag jumping)
+- `<Leader>sb` - Jump to step binding (alternative)
 - `<Leader>sl` - List all bindings
 
 ### Configuration
 
-You can configure the search paths for C# files:
+You can configure the plugin with these options:
 
 ```vim
+" Search paths for C# files
 let g:specflow_search_paths = ['.', '../src', '../tests']
+
+" Enable/disable binding cache (default: 1)
+let g:specflow_cache_enabled = 1
+
+" Enable/disable automatic highlighting of unbound steps (default: 1)
+let g:specflow_highlight_unbound = 1
 ```
 
 ## File Structure

@@ -9,6 +9,16 @@ let g:loaded_specflow_plugin = 1
 
 " Configuration
 let g:specflow_search_paths = get(g:, 'specflow_search_paths', ['/home/ben/Code/epm-windows'])
+let g:specflow_cache_enabled = get(g:, 'specflow_cache_enabled', 1)
+let g:specflow_highlight_unbound = get(g:, 'specflow_highlight_unbound', 1)
+
+" Cache for bindings to avoid repeated filesystem scans
+let s:binding_cache = {}
+let s:cache_timestamp = 0
+let s:cache_valid_seconds = 300  " 5 minutes
+
+" Define highlight group for unbound steps
+highlight default SpecFlowUnboundStep ctermfg=White ctermbg=Red guifg=#ffffff guibg=#ff0000
 
 function! s:EscapeRegex(text)
     return escape(a:text, '[](){}^$.*+?|\\')
@@ -117,6 +127,66 @@ function! s:TestStepAgainstCSharpRegex(step_text, csharp_regex)
     return a:step_text =~# l:full_pattern
 endfunction
 
+function! s:IsCacheValid()
+    " Check if the binding cache is still valid
+    if !g:specflow_cache_enabled
+        return 0
+    endif
+    
+    let l:current_time = localtime()
+    return !empty(s:binding_cache) && (l:current_time - s:cache_timestamp) < s:cache_valid_seconds
+endfunction
+
+function! s:BuildBindingCache()
+    " Build cache of all bindings found in C# files
+    if s:IsCacheValid()
+        return s:binding_cache
+    endif
+    
+    let s:binding_cache = {}
+    let l:cs_files = s:FindCSFiles()
+    
+    for cs_file in l:cs_files
+        let l:lines = readfile(cs_file)
+        let l:line_num = 0
+        
+        for line in l:lines
+            let l:line_num += 1
+            if line =~# '^\s*\[\(Given\|When\|Then\)(@".*")\]'
+                let l:step_type = substitute(line, '^\s*\[\(\w\+\)(@".*")\].*$', '\1', '')
+                let l:pattern = substitute(line, '^\s*\[\w\+(@"\(.*\)")\].*$', '\1', '')
+                
+                " Store binding info
+                let l:binding_key = l:step_type . ':' . l:pattern
+                let s:binding_cache[l:binding_key] = {
+                    \ 'file': cs_file,
+                    \ 'line': l:line_num,
+                    \ 'type': l:step_type,
+                    \ 'pattern': l:pattern
+                \ }
+            endif
+        endfor
+    endfor
+    
+    let s:cache_timestamp = localtime()
+    return s:binding_cache
+endfunction
+
+function! s:FindBindingForStep(step_text, step_type)
+    " Find a binding for the given step using cache
+    let l:cache = s:BuildBindingCache()
+    
+    for [key, binding] in items(l:cache)
+        if binding.type ==# a:step_type || a:step_type =~# '\(Given\|When\|Then\)'
+            if s:TestStepAgainstCSharpRegex(a:step_text, binding.pattern)
+                return binding
+            endif
+        endif
+    endfor
+    
+    return {}
+endfunction
+
 function! SpecFlowJumpToBinding()
     " Main function to jump to the binding for the current step
     let l:current_line = getline('.')
@@ -146,61 +216,154 @@ function! SpecFlowJumpToBinding()
         return
     endif
     
-    let l:cs_files = s:FindCSFiles()
+    " Use cached binding search
+    let l:binding = s:FindBindingForStep(l:step_text, l:step_type)
     
-    " Search through all C# files
-    for cs_file in l:cs_files
-        let l:result = s:SearchBindingInFile(cs_file, l:step_text, l:step_type)
-        if !empty(l:result)
-            execute 'edit ' . fnameescape(l:result[0])
-            execute l:result[1]
-            return
-        endif
-    endfor
+    if !empty(l:binding)
+        execute 'edit ' . fnameescape(l:binding.file)
+        execute l:binding.line
+        return
+    endif
     
     echo "No binding found for: " . l:step_text
 endfunction
 
 function! SpecFlowListBindings()
-    " List all bindings found in C# files
-    let l:cs_files = s:FindCSFiles()
-    let l:bindings = []
+    " List all bindings found in C# files using cache
+    let l:cache = s:BuildBindingCache()
     
-    for cs_file in l:cs_files
-        let l:lines = readfile(cs_file)
-        let l:line_num = 0
-        
-        for line in l:lines
-            let l:line_num += 1
-            if line =~# '^\s*\[\(Given\|When\|Then\)(@".*")\]'
-                let l:step_type = substitute(line, '^\s*\[\(\w\+\)(@".*")\].*$', '\1', '')
-                let l:pattern = substitute(line, '^\s*\[\w\+(@"\(.*\)")\].*$', '\1', '')
-                call add(l:bindings, {'file': cs_file, 'line': l:line_num, 'type': l:step_type, 'pattern': l:pattern})
-            endif
-        endfor
-    endfor
-    
-    if empty(l:bindings)
+    if empty(l:cache)
         echo "No SpecFlow bindings found"
         return
     endif
     
-    echo "Found " . len(l:bindings) . " bindings:"
-    for binding in l:bindings
+    echo "Found " . len(l:cache) . " bindings:"
+    for [key, binding] in items(l:cache)
         echo binding.type . ": " . binding.pattern . " (" . binding.file . ":" . binding.line . ")"
     endfor
+endfunction
+
+function! s:HighlightUnboundSteps()
+    " Highlight steps that don't have corresponding bindings
+    if !g:specflow_highlight_unbound || (&filetype !=# 'specflow' && &filetype !=# 'cucumber')
+        return
+    endif
+    
+    " Clear previous matches
+    silent! call clearmatches()
+    
+    let l:cache = s:BuildBindingCache()
+    let l:line_num = 1
+    let l:total_lines = line('$')
+    let l:unbound_count = 0
+    
+    while l:line_num <= l:total_lines
+        let l:line = getline(l:line_num)
+        let l:step_text = s:ExtractStepText(l:line)
+        
+        " Also check for lines that look like steps but don't have keywords
+        let l:looks_like_step = l:line =~# '^\s*[A-Z][^:]*$' && l:line !~# '^\s*\(@\|#\|Feature:\|Scenario:\|Background:\|Examples:\)'
+        
+        if !empty(l:step_text) || l:looks_like_step
+            " Determine step type
+            let l:step_type = ''
+            if l:line =~# '^\s*Given'
+                let l:step_type = 'Given'
+            elseif l:line =~# '^\s*When'  
+                let l:step_type = 'When'
+            elseif l:line =~# '^\s*Then'
+                let l:step_type = 'Then'
+            elseif l:line =~# '^\s*And'
+                let l:step_type = '\(Given\|When\|Then\)'
+            elseif l:line =~# '^\s*But'
+                let l:step_type = '\(Given\|When\|Then\)'
+            elseif l:looks_like_step
+                " Line looks like a step but has no keyword - highlight as error
+                call matchadd('SpecFlowUnboundStep', '\%' . l:line_num . 'l.*')
+                let l:unbound_count += 1
+                let l:line_num += 1
+                continue
+            endif
+            
+            if !empty(l:step_type) && !empty(l:step_text)
+                let l:binding = s:FindBindingForStep(l:step_text, l:step_type)
+                if empty(l:binding)
+                    " Highlight unbound step
+                    call matchadd('SpecFlowUnboundStep', '\%' . l:line_num . 'l.*')
+                    let l:unbound_count += 1
+                endif
+            endif
+        endif
+        
+        let l:line_num += 1
+    endwhile
+    
+    " Debug: show count of unbound steps
+    if l:unbound_count > 0
+        echo "Found " . l:unbound_count . " unbound steps"
+    endif
+endfunction
+
+function! s:ClearCache()
+    " Clear the binding cache
+    let s:binding_cache = {}
+    let s:cache_timestamp = 0
+endfunction
+
+function! s:DebugHighlighting()
+    " Debug function to test highlighting step by step
+    echo "=== SpecFlow Debug Highlighting ==="
+    echo "Filetype: " . &filetype
+    echo "Highlight enabled: " . g:specflow_highlight_unbound
+    
+    " Test the highlight group
+    echo "Testing highlight group..."
+    call matchadd('SpecFlowUnboundStep', '\%1l.*')
+    echo "Added match to line 1"
+    
+    " Check specific lines
+    let l:line_num = 1
+    let l:total_lines = line('$')
+    
+    while l:line_num <= l:total_lines
+        let l:line = getline(l:line_num)
+        let l:step_text = s:ExtractStepText(l:line)
+        let l:looks_like_step = l:line =~# '^\s*[A-Z][^:]*$' && l:line !~# '^\s*\(@\|#\|Feature:\|Scenario:\|Background:\|Examples:\)'
+        
+        if !empty(l:step_text) || l:looks_like_step
+            echo "Line " . l:line_num . ": '" . l:line . "'"
+            echo "  Step text: '" . l:step_text . "'"
+            echo "  Looks like step: " . l:looks_like_step
+        endif
+        
+        let l:line_num += 1
+    endwhile
 endfunction
 
 " Commands
 command! SpecFlowJumpToBinding call SpecFlowJumpToBinding()
 command! SpecFlowListBindings call SpecFlowListBindings()
+command! SpecFlowHighlightUnbound call s:HighlightUnboundSteps()
+command! SpecFlowClearCache call s:ClearCache()
+command! SpecFlowClearHighlight call clearmatches()
+command! SpecFlowDebugCache echo 'Cache has ' . len(s:BuildBindingCache()) . ' bindings'
+command! SpecFlowDebugHighlight call s:DebugHighlighting()
 
-" Key mappings (only in feature files)
+" Key mappings and auto-highlighting (only in feature files)
 augroup SpecFlowMappings
     autocmd!
     " Try multiple events to ensure the mapping takes
     autocmd FileType specflow call s:SetupSpecFlowMappings()
+    autocmd FileType cucumber call s:SetupSpecFlowMappings()
     autocmd BufRead,BufNewFile *.feature call s:SetupSpecFlowMappings()
+    
+    " Automatic highlighting of unbound steps
+    autocmd BufRead,BufNewFile *.feature call s:HighlightUnboundSteps()
+    autocmd BufWritePost *.feature call s:HighlightUnboundSteps()
+    autocmd FileType cucumber call s:HighlightUnboundSteps()
+    
+    " Cache invalidation when C# files change
+    autocmd BufWritePost *.cs call s:ClearCache()
 augroup END
 
 function! s:SetupSpecFlowMappings()

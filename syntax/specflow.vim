@@ -73,4 +73,7 @@ hi def link specflowComment Comment
 hi def link specflowTag Tag
 hi def link specflowTagLine Tag
 
+" Highlighting for unbound steps (steps without corresponding bindings)
+hi def SpecFlowUnboundStep ctermfg=White ctermbg=Red guifg=#ffffff guibg=#ff0000
+
 let b:current_syntax = "specflow"
