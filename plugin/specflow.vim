@@ -148,15 +148,12 @@ function! SpecFlowJumpToBinding()
     
     let l:cs_files = s:FindCSFiles()
     
-    echo "Searching for binding: " . l:step_text
-    
     " Search through all C# files
     for cs_file in l:cs_files
         let l:result = s:SearchBindingInFile(cs_file, l:step_text, l:step_type)
         if !empty(l:result)
             execute 'edit ' . fnameescape(l:result[0])
             execute l:result[1]
-            echo "Found binding in " . l:result[0] . " at line " . l:result[1]
             return
         endif
     endfor
@@ -219,5 +216,5 @@ function! s:SetupSpecFlowMappings()
     nnoremap <buffer> <Leader>sl :SpecFlowListBindings<CR>
     
     " Debug: echo to confirm mapping is set
-    echo "SpecFlow mappings applied to buffer"
+    " echo "SpecFlow mappings applied to buffer"
 endfunction
