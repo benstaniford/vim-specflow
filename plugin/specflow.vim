@@ -114,6 +114,10 @@ function! s:TestStepAgainstCSharpRegex(step_text, csharp_regex)
     let l:normalized_regex = substitute(l:normalized_regex, "'([^']*)'", 'PARAM', 'g')
     let l:normalized_regex = substitute(l:normalized_regex, '"([^"]*)"', 'PARAM', 'g')
     
+    " Handle optional trailing patterns like ( and ignore the expiry warning|)
+    " This should match either the text or nothing (empty alternative)
+    let l:normalized_regex = substitute(l:normalized_regex, '(\s*and[^|)]*|)', '', 'g')
+    
     " Handle any remaining parentheses groups
     while l:normalized_regex =~# '([^)]*)'
         let l:normalized_regex = substitute(l:normalized_regex, '([^)]*)', 'PARAM', '')
@@ -309,6 +313,7 @@ function! s:ClearCache()
     let s:binding_cache = {}
     let s:cache_timestamp = 0
 endfunction
+
 
 
 
