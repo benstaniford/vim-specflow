@@ -298,10 +298,6 @@ function! s:HighlightUnboundSteps()
         let l:line_num += 1
     endwhile
     
-    " Debug: show count of unbound steps
-    if l:unbound_count > 0
-        echo "Found " . l:unbound_count . " unbound steps"
-    endif
 endfunction
 
 function! s:ClearCache()
@@ -310,35 +306,6 @@ function! s:ClearCache()
     let s:cache_timestamp = 0
 endfunction
 
-function! s:DebugHighlighting()
-    " Debug function to test highlighting step by step
-    echo "=== SpecFlow Debug Highlighting ==="
-    echo "Filetype: " . &filetype
-    echo "Highlight enabled: " . g:specflow_highlight_unbound
-    
-    " Test the highlight group
-    echo "Testing highlight group..."
-    call matchadd('SpecFlowUnboundStep', '\%1l.*')
-    echo "Added match to line 1"
-    
-    " Check specific lines
-    let l:line_num = 1
-    let l:total_lines = line('$')
-    
-    while l:line_num <= l:total_lines
-        let l:line = getline(l:line_num)
-        let l:step_text = s:ExtractStepText(l:line)
-        let l:looks_like_step = l:line =~# '^\s*[A-Z][^:]*$' && l:line !~# '^\s*\(@\|#\|Feature:\|Scenario:\|Background:\|Examples:\)'
-        
-        if !empty(l:step_text) || l:looks_like_step
-            echo "Line " . l:line_num . ": '" . l:line . "'"
-            echo "  Step text: '" . l:step_text . "'"
-            echo "  Looks like step: " . l:looks_like_step
-        endif
-        
-        let l:line_num += 1
-    endwhile
-endfunction
 
 " Commands
 command! SpecFlowJumpToBinding call SpecFlowJumpToBinding()
@@ -346,8 +313,6 @@ command! SpecFlowListBindings call SpecFlowListBindings()
 command! SpecFlowHighlightUnbound call s:HighlightUnboundSteps()
 command! SpecFlowClearCache call s:ClearCache()
 command! SpecFlowClearHighlight call clearmatches()
-command! SpecFlowDebugCache echo 'Cache has ' . len(s:BuildBindingCache()) . ' bindings'
-command! SpecFlowDebugHighlight call s:DebugHighlighting()
 
 " Key mappings and auto-highlighting (only in feature files)
 augroup SpecFlowMappings
@@ -378,6 +343,4 @@ function! s:SetupSpecFlowMappings()
     nnoremap <buffer> <Leader>sb :SpecFlowJumpToBinding<CR>
     nnoremap <buffer> <Leader>sl :SpecFlowListBindings<CR>
     
-    " Debug: echo to confirm mapping is set
-    " echo "SpecFlow mappings applied to buffer"
 endfunction
