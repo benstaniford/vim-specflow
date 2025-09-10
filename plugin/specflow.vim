@@ -98,33 +98,29 @@ endfunction
 
 function! s:TestStepAgainstCSharpRegex(step_text, csharp_regex)
     " Test if a step text matches a C# regex pattern
-    " Use a simpler approach - manually handle known patterns
+    " Simplified approach: treat ALL parameters as wildcards
     
-    " For the specific case we're dealing with:
-    " C# regex: "the file '(.*)' '(does|does not)' exist"
-    " Step text: "the file 'C:\nonexistent-test-file.txt' 'does not' exist"
+    " Normalize the step text - replace all quoted content and <params> with PARAM
+    let l:normalized_step = substitute(a:step_text, '\s\+$', '', '')  " Remove trailing whitespace
+    let l:normalized_step = substitute(l:normalized_step, "'[^']*'", 'PARAM', 'g')
+    let l:normalized_step = substitute(l:normalized_step, '"[^"]*"', 'PARAM', 'g')  
+    let l:normalized_step = substitute(l:normalized_step, '<[^>]*>', 'PARAM', 'g')
     
-    if a:csharp_regex ==# "the file '(.*)' '(does|does not)' exist"
-        " Check if step matches this specific pattern
-        return a:step_text =~# "^the file '.*' '\\(does\\|does not\\)' exist$"
-    endif
+    " Normalize the C# regex - be more aggressive about replacing patterns
+    let l:normalized_regex = substitute(a:csharp_regex, '\s\+$', '', '')  " Remove trailing whitespace
     
-    " For other patterns, convert more generally
-    let l:pattern = a:csharp_regex
+    " Handle quoted alternations more specifically
+    " Pattern: '(word1|word2|word3)' should match any quoted content
+    let l:normalized_regex = substitute(l:normalized_regex, "'([^']*)'", 'PARAM', 'g')
+    let l:normalized_regex = substitute(l:normalized_regex, '"([^"]*)"', 'PARAM', 'g')
     
-    " Convert (.*) to vim regex
-    let l:pattern = substitute(l:pattern, '(\.\\*)', '.*', 'g')
+    " Handle any remaining parentheses groups
+    while l:normalized_regex =~# '([^)]*)'
+        let l:normalized_regex = substitute(l:normalized_regex, '([^)]*)', 'PARAM', '')
+    endwhile
     
-    " Convert alternations like (does|does not) 
-    let l:pattern = substitute(l:pattern, '(\\([^|)]*\\)|\\([^)]*\\))', '\\(\\1\\|\\2\\)', 'g')
-    
-    " Escape literal characters
-    let l:pattern = substitute(l:pattern, "'", "\\\\'", 'g')
-    let l:pattern = substitute(l:pattern, '\\.', '\\\\.', 'g')
-    
-    " Test match
-    let l:full_pattern = '^' . l:pattern . '$'
-    return a:step_text =~# l:full_pattern
+    " Simple string comparison
+    return l:normalized_step ==# l:normalized_regex
 endfunction
 
 function! s:IsCacheValid()
@@ -177,10 +173,18 @@ function! s:FindBindingForStep(step_text, step_type)
     let l:cache = s:BuildBindingCache()
     
     for [key, binding] in items(l:cache)
-        if binding.type ==# a:step_type || a:step_type =~# '\(Given\|When\|Then\)'
-            if s:TestStepAgainstCSharpRegex(a:step_text, binding.pattern)
-                return binding
-            endif
+        " And/But steps should match any binding type
+        let l:should_check = 0
+        if a:step_type =~# '\(Given\|When\|Then\)'
+            " And/But - check all binding types
+            let l:should_check = 1
+        elseif binding.type ==# a:step_type
+            " Exact type match
+            let l:should_check = 1
+        endif
+        
+        if l:should_check && s:TestStepAgainstCSharpRegex(a:step_text, binding.pattern)
+            return binding
         endif
     endfor
     
@@ -305,6 +309,8 @@ function! s:ClearCache()
     let s:binding_cache = {}
     let s:cache_timestamp = 0
 endfunction
+
+
 
 
 " Commands
