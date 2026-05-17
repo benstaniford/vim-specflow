@@ -8,6 +8,10 @@ __pycache__/
 /bin/specflow-helper
 /bin/specflow-helper.exe
 
+# Override the global "tags" exclusion — doc/tags is the :help index and
+# is committed so users get :help on install without running :helptags.
+!doc/tags
+
 # C extensions
 *.so
 
