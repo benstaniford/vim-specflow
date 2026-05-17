@@ -9,6 +9,10 @@ license = "MIT OR Apache-2.0"
 name = "specflow_helper"
 path = "src/lib.rs"
 
+[[bin]]
+name = "specflow-helper"
+path = "src/main.rs"
+
 [dependencies]
 regex = "1"
 serde = { version = "1", features = ["derive"] }
