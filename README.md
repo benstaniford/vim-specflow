@@ -64,6 +64,9 @@ honoured; the first entry is used as the root.
 - `:SpecFlowClearHighlight` — clear all match highlights in the buffer
 - `:SpecFlowClearCache` — delete the on-disk binding index cache (forces a
   full rescan on the next call)
+- `:SpecFlowFzfBindings` — fuzzy-search every known binding and jump to it.
+  Requires [fzf](https://github.com/junegunn/fzf) and the `fzf.vim` plugin;
+  when detected, the buffer-local mapping `<Leader>fs` is also set.
 
 ## How matching works
 

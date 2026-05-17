@@ -23,6 +23,7 @@ specflow-helper <subcommand> [args]
 Subcommands:
   resolve --root DIR [--kind Given|When|Then] --step TEXT
   scan    --root DIR --feature PATH
+  list    --root DIR
 
 Common flags:
   --cache PATH    cache file location (defaults to $XDG_CACHE_HOME/vim-specflow/...)
@@ -52,6 +53,7 @@ fn main() -> ExitCode {
     let result = match sub {
         "resolve" => run_resolve(rest),
         "scan" => run_scan(rest),
+        "list" => run_list(rest),
         other => Err(format!("unknown subcommand: {other}\n\n{USAGE}")),
     };
     match result {
@@ -227,6 +229,33 @@ fn run_scan(args: &[String]) -> Result<(), String> {
     ));
     out.push_str("}}");
     println!("{out}");
+    Ok(())
+}
+
+// ---- list -----------------------------------------------------------------
+
+fn run_list(args: &[String]) -> Result<(), String> {
+    let (common, rest) = parse_common(args)?;
+    if !rest.is_empty() {
+        return Err(format!("unknown flag for list: {}", rest[0]));
+    }
+    let idx = build_index(&common)?;
+    // Tab-separated: [Kind] pattern \t file:line
+    // The format is fzf-friendly — fzf can be told to display only the first
+    // field while keeping the location for the sink callback.
+    let stdout = std::io::stdout();
+    let mut handle = stdout.lock();
+    use std::io::Write;
+    for b in idx.bindings.iter() {
+        let _ = writeln!(
+            handle,
+            "[{}] {}\t{}:{}",
+            b.kind.as_str(),
+            b.pattern,
+            b.file.display(),
+            b.line
+        );
+    }
     Ok(())
 }
 

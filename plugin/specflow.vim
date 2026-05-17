@@ -182,16 +182,71 @@ function! s:RefreshOpenFeatureBuffers() abort
     endif
 endfunction
 
+" --- Fzf integration ----------------------------------------------------
+
+" Each line emitted by `specflow-helper list` is `[Kind] pattern\tfile:line`.
+" fzf shows the human-readable prefix; the sink parses the trailing field.
+function! s:FzfSink(line) abort
+    let l:tab = strridx(a:line, "\t")
+    if l:tab < 0
+        return
+    endif
+    let l:loc = a:line[l:tab + 1:]
+    let l:colon = strridx(l:loc, ':')
+    if l:colon < 0
+        return
+    endif
+    let l:file = l:loc[: l:colon - 1]
+    let l:line_nr = str2nr(l:loc[l:colon + 1:])
+    if !filereadable(l:file) || l:line_nr <= 0
+        return
+    endif
+    execute 'edit ' . fnameescape(l:file)
+    call cursor(l:line_nr, 1)
+    normal! zz
+endfunction
+
+function! SpecFlowFzfBindings() abort
+    if !s:HasFzf()
+        echo 'specflow: fzf.vim not installed'
+        return
+    endif
+    if !s:HelperReady()
+        call s:WarnMissingHelper()
+        return
+    endif
+    let l:cmd = shellescape(g:specflow_helper_path) . ' list --root ' . shellescape(s:Root())
+    call fzf#run(fzf#wrap({
+                \ 'source': l:cmd,
+                \ 'sink': function('s:FzfSink'),
+                \ 'options': ['--prompt', 'Bindings> ',
+                \             '--delimiter', "\t",
+                \             '--with-nth', '1',
+                \             '--no-multi']
+                \ }))
+endfunction
+
 command! SpecFlowJumpToBinding call SpecFlowJumpToBinding()
 command! SpecFlowHighlightUnbound call s:HighlightUnbound()
 command! SpecFlowClearCache call s:ClearCache()
 command! SpecFlowClearHighlight call clearmatches()
+command! SpecFlowFzfBindings call SpecFlowFzfBindings()
 
 " .feature files are commonly detected as either 'specflow' (our ftdetect)
 " or 'cucumber' (Neovim's built-in). Bind <C-]> on both so the user lands
 " on the right side regardless of which detector won.
 function! s:SetupBufferMappings() abort
     nnoremap <buffer> <silent> <C-]> :SpecFlowJumpToBinding<CR>
+    if s:HasFzf()
+        nnoremap <buffer> <silent> <Leader>fs :SpecFlowFzfBindings<CR>
+    endif
+endfunction
+
+function! s:HasFzf() abort
+    " fzf.vim uses autoload, so the functions aren't visible to exists()
+    " until first called. The base fzf plugin sets g:loaded_fzf when its
+    " plugin file runs — that's the reliable signal.
+    return exists('g:loaded_fzf') || exists('*fzf#run')
 endfunction
 
 augroup SpecFlowPlugin

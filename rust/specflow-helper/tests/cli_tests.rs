@@ -182,6 +182,39 @@ fn scan_marks_unknown_steps_resolved_null() {
 }
 
 #[test]
+fn list_emits_one_line_per_binding() {
+    let root = smoke_root();
+    let (stdout, stderr, code) = run(&[
+        "list",
+        "--root",
+        root.to_str().unwrap(),
+        "--no-cache",
+    ]);
+    assert_eq!(code, 0, "stderr: {stderr}");
+    let lines: Vec<&str> = stdout.lines().collect();
+    // SmokeBindings.cs declares 28 bindings (the [Given]/[When]/[Then]
+    // attributes — note FileExistence and IRunWithTable each carry two).
+    assert!(
+        lines.len() >= 25,
+        "expected ~28 bindings, got {}",
+        lines.len()
+    );
+    // Format: `[Kind] pattern \t file:line`
+    for line in &lines {
+        assert!(
+            line.starts_with("[Given]") || line.starts_with("[When]") || line.starts_with("[Then]"),
+            "unexpected line: {line:?}"
+        );
+        let parts: Vec<&str> = line.split('\t').collect();
+        assert_eq!(parts.len(), 2, "expected one tab separator: {line:?}");
+        assert!(
+            parts[1].contains(':'),
+            "expected file:line in trailing field: {line:?}"
+        );
+    }
+}
+
+#[test]
 fn unknown_subcommand_exits_nonzero() {
     let (_, stderr, code) = run(&["wibble"]);
     assert_ne!(code, 0);
