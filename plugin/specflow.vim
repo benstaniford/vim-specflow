@@ -20,10 +20,12 @@ endif
 
 let g:specflow_highlight_unbound = get(g:, 'specflow_highlight_unbound', 1)
 
-" Helper binary location. Defaults to <plugin>/bin/specflow-helper; rebuild
-" via <plugin>/bin/build_helper.sh.
+" Helper binary location. Defaults to <plugin>/bin/specflow-helper(.exe);
+" rebuild via <plugin>/bin/build_helper.sh (Linux/Mac) or build_helper.ps1
+" (Windows).
 let s:plugin_dir = expand('<sfile>:p:h:h')
-let g:specflow_helper_path = get(g:, 'specflow_helper_path', s:plugin_dir . '/bin/specflow-helper')
+let s:exe_suffix = has('win32') ? '.exe' : ''
+let g:specflow_helper_path = get(g:, 'specflow_helper_path', s:plugin_dir . '/bin/specflow-helper' . s:exe_suffix)
 
 highlight default SpecFlowUnboundStep ctermfg=White ctermbg=Red guifg=#ffffff guibg=#ff0000
 
@@ -34,9 +36,10 @@ function! s:HelperReady() abort
 endfunction
 
 function! s:WarnMissingHelper() abort
+    let l:script = has('win32') ? 'build_helper.ps1' : 'build_helper.sh'
     echohl WarningMsg
     echom 'specflow: helper not found at ' . g:specflow_helper_path
-    echom '          run ' . s:plugin_dir . '/bin/build_helper.sh'
+    echom '          run ' . s:plugin_dir . '/bin/' . l:script
     echohl None
 endfunction
 

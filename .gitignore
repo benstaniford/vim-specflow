@@ -4,8 +4,9 @@ __pycache__/
 *$py.class
 .claude/
 
-# Built specflow-helper binary (produced by bin/build_helper.sh)
+# Built specflow-helper binary (produced by bin/build_helper.sh|.ps1)
 /bin/specflow-helper
+/bin/specflow-helper.exe
 
 # C extensions
 *.so

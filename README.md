@@ -16,7 +16,9 @@ large test suites.
 
 ## Installation
 
-Clone into a Vim packpath and build the helper:
+Clone into a Vim packpath and build the helper.
+
+Linux/Mac:
 
 ```bash
 cd ~/.vim/pack/plugins/start/
@@ -24,9 +26,18 @@ git clone <repository-url> vim-specflow
 vim-specflow/bin/build_helper.sh
 ```
 
-`build_helper.sh` needs `cargo` on `PATH` (install from <https://rustup.rs>).
-It compiles `rust/specflow-helper` in release mode and copies the binary to
-`bin/specflow-helper`.
+Windows (PowerShell):
+
+```powershell
+cd $env:USERPROFILE\vimfiles\pack\plugins\start
+git clone <repository-url> vim-specflow
+powershell -ExecutionPolicy Bypass -File vim-specflow\bin\build_helper.ps1
+```
+
+Both scripts need `cargo` on `PATH` (install from <https://rustup.rs>).
+They compile `rust/specflow-helper` in release mode and copy the binary
+(`specflow-helper` on Linux/Mac, `specflow-helper.exe` on Windows) into the
+plugin's `bin/` directory.
 
 ## Configuration
 
