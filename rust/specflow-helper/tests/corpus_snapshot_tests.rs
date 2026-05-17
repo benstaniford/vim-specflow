@@ -2,7 +2,7 @@
 //!
 //! Skipped by default because it depends on a path outside the repo. To run:
 //!
-//!   EPM_CORPUS_PATH=$HOME/Code/epm-windows/Tests/Automation \
+//!   SPECFLOW_CORPUS_PATH=/path/to/your/tests \
 //!     cargo test --release --test corpus_snapshot_tests -- --ignored --nocapture
 //!
 //! The test counts how many real `.feature` steps fail to resolve and asserts
@@ -43,15 +43,15 @@ fn walk_features(dir: &Path, out: &mut Vec<PathBuf>) {
 }
 
 #[test]
-#[ignore = "requires EPM_CORPUS_PATH to a live SpecFlow tree"]
+#[ignore = "requires SPECFLOW_CORPUS_PATH to a live SpecFlow tree"]
 fn live_corpus_unbound_rate_within_budget() {
-    let Some(root) = std::env::var_os("EPM_CORPUS_PATH").map(PathBuf::from) else {
-        eprintln!("EPM_CORPUS_PATH not set -- skipping");
+    let Some(root) = std::env::var_os("SPECFLOW_CORPUS_PATH").map(PathBuf::from) else {
+        eprintln!("SPECFLOW_CORPUS_PATH not set -- skipping");
         return;
     };
     assert!(
         root.is_dir(),
-        "EPM_CORPUS_PATH does not point at a directory: {root:?}"
+        "SPECFLOW_CORPUS_PATH does not point at a directory: {root:?}"
     );
 
     let idx = Index::build(&root, None).expect("build index");

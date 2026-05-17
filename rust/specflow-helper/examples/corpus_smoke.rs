@@ -1,6 +1,6 @@
-//! Diagnostic + benchmark against a real EPM-shaped corpus.
+//! Diagnostic + benchmark against a real SpecFlow tree.
 //!
-//! Run: cargo run --release --example corpus_smoke -- [root]
+//! Run: cargo run --release --example corpus_smoke -- <root>
 //!
 //! - Times a full cold build (no cache) and a warm rebuild (cache populated).
 //! - Reports compile errors so we can spot patterns the regex crate rejects.
@@ -11,9 +11,10 @@ use std::path::PathBuf;
 use std::time::Instant;
 
 fn main() {
-    let root = std::env::args()
-        .nth(1)
-        .unwrap_or_else(|| "/home/ben/Code/epm-windows/Tests/Automation".to_string());
+    let root = std::env::args().nth(1).unwrap_or_else(|| {
+        eprintln!("usage: corpus_smoke <root>");
+        std::process::exit(2);
+    });
     let root = PathBuf::from(root);
 
     let cache = std::env::temp_dir().join("specflow-helper-bench-cache.json");

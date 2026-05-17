@@ -1,6 +1,7 @@
-//! Scan every .feature file under the corpus, resolve every step, print a
-//! by-file unbound summary. Run:
-//!   cargo run --release --example corpus_unbound -- /path/to/Tests/Automation
+//! Scan every .feature file under a SpecFlow tree, resolve every step, and
+//! print a by-file unbound summary.
+//!
+//! Run: cargo run --release --example corpus_unbound -- <root>
 
 use specflow_helper::{parse_feature_steps, Index};
 use std::path::{Path, PathBuf};
@@ -31,9 +32,10 @@ fn walk_features(dir: &Path, out: &mut Vec<PathBuf>) {
 }
 
 fn main() {
-    let root = std::env::args()
-        .nth(1)
-        .unwrap_or_else(|| "/home/ben/Code/epm-windows/Tests/Automation".to_string());
+    let root = std::env::args().nth(1).unwrap_or_else(|| {
+        eprintln!("usage: corpus_unbound <root>");
+        std::process::exit(2);
+    });
     let root = PathBuf::from(root);
     let idx = Index::build(&root, None).expect("build index");
     let query = idx.into_query();

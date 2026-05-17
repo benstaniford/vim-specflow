@@ -1,9 +1,9 @@
-//! Real-corpus regression tests built from `BeyondTrust.Automation.Windows.Smoke/Smoke.feature`.
+//! Regression tests built from a representative SpecFlow smoke suite.
 //!
 //! Each test in this file targets a pattern shape that the previous VimScript
 //! plugin got wrong (and therefore highlighted red in the editor). The
-//! fixture is hermetic — bindings are copied verbatim from the live corpus
-//! into `tests/fixtures/smoke_corpus/SmokeBindings.cs`, so this suite needs
+//! fixture is hermetic — `tests/fixtures/smoke_corpus/SmokeBindings.cs`
+//! contains every binding the feature file exercises, so this suite needs
 //! no external paths.
 
 use specflow_helper::{Index, StepKind};
@@ -120,12 +120,12 @@ fn optional_trailing_group_as_the_user() {
     let idx = build_index();
     let pat_with = resolve(
         &idx,
-        "I start the 'Avecto QA Test Windows Service' service as the user",
+        "I start the 'Acme Sample Service' service as the user",
         Some(StepKind::When),
     );
     let pat_without = resolve(
         &idx,
-        "I start the 'Avecto QA Test Windows Service' service",
+        "I start the 'Acme Sample Service' service",
         Some(StepKind::When),
     );
     assert_eq!(pat_with, "I start the '(.*)' service((?: as the user|))");
@@ -137,7 +137,7 @@ fn optional_trailing_group_from_the_original_folder() {
     let idx = build_index();
     let pat = resolve(
         &idx,
-        "I run 'DummyVbsScript.vbs' within 'Resources' using 'Run with Defendpoint'",
+        "I run 'DummyVbsScript.vbs' within 'Resources' using 'Run with Acme'",
         Some(StepKind::Given),
     );
     assert_eq!(
@@ -180,7 +180,7 @@ fn quoted_alternation_with_compound_negation() {
     let idx = build_index();
     let pat = resolve(
         &idx,
-        "the 'Avecto QA Test Windows Service' service status 'is' 'Running'",
+        "the 'Acme Sample Service' service status 'is' 'Running'",
         Some(StepKind::Then),
     );
     assert_eq!(pat, "the '(.*)' service status '(is|is not|isn't)' '(.*)'");
@@ -207,13 +207,13 @@ fn when_and_then_bindings_with_same_pattern_both_match() {
     let idx = build_index();
     assert!(idx
         .find(
-            "the file 'C:\\Program Files\\Avecto\\Privilege Guard Client\\DefendpointService.exe' 'does' exist",
+            "the file 'C:\\Program Files\\Acme\\Sample Client\\SampleService.exe' 'does' exist",
             Some(StepKind::When),
         )
         .is_some());
     assert!(idx
         .find(
-            "the file 'C:\\Program Files\\Avecto\\Privilege Guard Client\\PGSystemTray.exe' 'does' exist",
+            "the file 'C:\\Program Files\\Acme\\Sample Client\\Tray.exe' 'does' exist",
             Some(StepKind::Then),
         )
         .is_some());

@@ -1,6 +1,6 @@
 using TechTalk.SpecFlow;
 
-namespace BeyondTrust.Automation.Windows.Sample
+namespace Acme.Automation.Sample
 {
     [Binding]
     public class GnarlySteps
@@ -38,7 +38,7 @@ namespace BeyondTrust.Automation.Windows.Sample
         public void GivenAccessLevel(string who, string level, string what) { }
 
         // 9. Non-verbatim string form (no @ prefix)
-        [Given("groups from '(identity|pmc)' '(are|are not)' available for '(admin|user)'")]
+        [Given("groups from '(local|remote)' '(are|are not)' available for '(admin|user)'")]
         public void GivenGroups(string source, string state, string who) { }
 
         // 10. When-step with character class

@@ -100,13 +100,13 @@ fn optional_trailing_group_matches_with_and_without() {
     let pattern = "I attempt to stop the '(.*)' service((?: as the user|))";
     assert_match(
         &idx,
-        "I attempt to stop the 'DefendpointService' service",
+        "I attempt to stop the 'SampleService' service",
         Some(StepKind::Given),
         pattern,
     );
     assert_match(
         &idx,
-        "I attempt to stop the 'DefendpointService' service as the user",
+        "I attempt to stop the 'SampleService' service as the user",
         Some(StepKind::Given),
         pattern,
     );
@@ -128,9 +128,9 @@ fn non_verbatim_form_matches_real_step() {
     let idx = build_index();
     assert_match(
         &idx,
-        "groups from 'identity' 'are' available for 'admin'",
+        "groups from 'local' 'are' available for 'admin'",
         Some(StepKind::Given),
-        "groups from '(identity|pmc)' '(are|are not)' available for '(admin|user)'",
+        "groups from '(local|remote)' '(are|are not)' available for '(admin|user)'",
     );
 }
 
@@ -139,7 +139,7 @@ fn named_capture_with_char_classes_matches_url() {
     let idx = build_index();
     assert_match(
         &idx,
-        "I build the repository 'https://github.com/BeyondTrust/epm-windows.git' using Microsoft Build",
+        "I build the repository 'https://github.com/example-org/sample-app.git' using Microsoft Build",
         Some(StepKind::Given),
         r"I build the repository '(https://github.com/[\w,\-,_]+/(?<repo>[\w,\-,_]+)\.git)' using Microsoft Build",
     );

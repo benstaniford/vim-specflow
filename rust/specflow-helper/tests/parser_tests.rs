@@ -54,7 +54,7 @@ fn parses_non_verbatim_string_form() {
         .expect("non-verbatim binding should be parsed");
     assert_eq!(
         groups.pattern,
-        "groups from '(identity|pmc)' '(are|are not)' available for '(admin|user)'"
+        "groups from '(local|remote)' '(are|are not)' available for '(admin|user)'"
     );
 }
 

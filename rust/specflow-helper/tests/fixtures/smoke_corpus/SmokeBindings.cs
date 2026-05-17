@@ -1,13 +1,14 @@
-// Curated bindings extracted verbatim from the real EPM SpecFlow corpus,
-// containing exactly (and only) the bindings exercised by Smoke.feature.
+// Curated bindings exercising every SpecFlow pattern shape used by
+// Smoke.feature: literal matches, quoted alternations, unquoted captures,
+// numeric captures, optional trailing groups, verbatim escaped quotes,
+// and data-table steps.
 //
-// This file is the hermetic equivalent of the live corpus — when this test
-// file plus Smoke.feature resolve cleanly, the helper is correct for every
-// shape of pattern that appears in the smoke suite.
+// When this file plus Smoke.feature resolve cleanly, the helper is correct
+// for every shape of pattern that appears in the smoke suite.
 
 using TechTalk.SpecFlow;
 
-namespace BeyondTrust.Automation.Windows.Smoke.Bindings
+namespace Acme.Automation.Sample.Smoke.Bindings
 {
     [Binding]
     public class SmokeBindings
@@ -36,7 +37,7 @@ namespace BeyondTrust.Automation.Windows.Smoke.Bindings
         [Given(@"I run '(.*)' within '(.*)' using '(.*)'((?: from the original folder|))")]
         public void GivenIRunWithin(string what, string within, string using_, string trailing) { }
 
-        // --- DefendpointNotification -------------------------------------
+        // --- ElevationNotification ---------------------------------------
         [Given(@"I select '(.*)' from the '(.*)' drop down")]
         public void GivenISelect(string item, string label) { }
 
