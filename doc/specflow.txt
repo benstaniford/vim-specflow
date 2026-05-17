@@ -1,0 +1,249 @@
+*specflow.txt*       SpecFlow helper for Vim/Neovim          Last change: 2026
+
+==============================================================================
+CONTENTS                                                  *specflow-contents*
+
+  1. Introduction.............................|specflow-introduction|
+  2. Installation.............................|specflow-installation|
+  3. Configuration............................|specflow-configuration|
+  4. Commands.................................|specflow-commands|
+  5. Mappings.................................|specflow-mappings|
+  6. Matching semantics.......................|specflow-matching|
+  7. Cache management.........................|specflow-cache|
+  8. fzf integration..........................|specflow-fzf|
+  9. Troubleshooting..........................|specflow-troubleshooting|
+ 10. Architecture.............................|specflow-architecture|
+
+==============================================================================
+1. INTRODUCTION                                       *specflow-introduction*
+
+vim-specflow is a Vim/Neovim plugin for editing SpecFlow `.feature` files
+alongside a tree of C# step bindings.  It provides:
+
+  - Syntax highlighting for `.feature` files
+  - Jump from a step under the cursor to its `[Given]`/`[When]`/`[Then]`
+    attribute in the C# bindings (via |CTRL-]|)
+  - Red highlighting of steps that have no matching binding
+  - Optional fuzzy search across every known binding (when fzf is
+    installed)
+
+Indexing and regex matching are delegated to a small Rust helper binary,
+`specflow-helper`, so even very large binding trees scan in a fraction of a
+second.
+
+==============================================================================
+2. INSTALLATION                                       *specflow-installation*
+
+Install with any plugin manager that respects Vim's packpath.  For a manual
+install on Linux or Mac: >
+
+    cd ~/.vim/pack/plugins/start/
+    git clone <repository-url> vim-specflow
+    vim-specflow/bin/build_helper.sh
+
+On Windows (PowerShell): >
+
+    cd $env:USERPROFILE\vimfiles\pack\plugins\start
+    git clone <repository-url> vim-specflow
+    powershell -ExecutionPolicy Bypass -File vim-specflow\bin\build_helper.ps1
+<
+Both build scripts require `cargo` on `PATH`.  Install Rust from
+https://rustup.rs.
+
+The build compiles `rust/specflow-helper` in release mode and copies the
+binary into the plugin's `bin/` directory.  This produces
+`bin/specflow-helper` on Linux/Mac and `bin/specflow-helper.exe` on Windows.
+
+To generate help tags after install: >
+
+    :helptags ALL
+<
+==============================================================================
+3. CONFIGURATION                                     *specflow-configuration*
+
+                                                          *g:specflow_root*
+g:specflow_root~
+    String.  The single root directory containing the C# binding sources to
+    scan.  Default: empty (falls back to the first entry of
+    |g:specflow_search_paths| or the current working directory). >
+
+        let g:specflow_root = '/home/me/Code/my-project/Tests'
+<
+                                              *g:specflow_highlight_unbound*
+g:specflow_highlight_unbound~
+    Boolean.  Highlight steps with no matching binding in red.  Default: 1. >
+
+        let g:specflow_highlight_unbound = 0
+<
+                                                  *g:specflow_helper_path*
+g:specflow_helper_path~
+    String.  Override the path to the `specflow-helper` binary.  Defaults
+    to `<plugin>/bin/specflow-helper` (or `.exe` on Windows).  Useful when
+    sharing a single binary across multiple checkouts. >
+
+        let g:specflow_helper_path = '/usr/local/bin/specflow-helper'
+<
+                                                  *g:specflow_search_paths*
+g:specflow_search_paths~
+    List.  Legacy configuration kept for backward compatibility.  If
+    |g:specflow_root| is empty, the first entry of this list is used as the
+    root. >
+
+        let g:specflow_search_paths = ['/home/me/Code/my-project/Tests']
+<
+==============================================================================
+4. COMMANDS                                               *specflow-commands*
+
+                                                    *:SpecFlowJumpToBinding*
+:SpecFlowJumpToBinding
+    Jump from the step under the cursor to the matching C# binding.  When
+    no binding is found, prints `specflow: no binding for: <step>`.
+    Default mapping: |CTRL-]| (buffer-local).
+
+                                                  *:SpecFlowHighlightUnbound*
+:SpecFlowHighlightUnbound
+    Re-scan the current feature buffer and highlight steps with no binding
+    in red.  Runs automatically on |BufRead|, |BufNewFile|, and
+    |BufWritePost| for `.feature` files.
+
+                                                    *:SpecFlowClearHighlight*
+:SpecFlowClearHighlight
+    Clear all match highlights in the current buffer.
+
+                                                        *:SpecFlowClearCache*
+:SpecFlowClearCache
+    Delete the on-disk binding index cache, forcing a full rescan on the
+    next call.  Normally unnecessary — the cache is keyed on
+    `(mtime, size)` per file and self-invalidates.
+
+                                                      *:SpecFlowFzfBindings*
+:SpecFlowFzfBindings
+    Fuzzy-search every known binding and jump to the chosen one.  Requires
+    fzf.vim — see |specflow-fzf|.
+
+==============================================================================
+5. MAPPINGS                                               *specflow-mappings*
+
+All mappings are buffer-local and only active when |filetype| is `specflow`
+or `cucumber`.
+
+                                                              *specflow-<C-]>*
+<C-]>                                                                    ~
+    Jump to the binding for the step under the cursor.  Calls
+    |:SpecFlowJumpToBinding|.
+
+                                                       *specflow-<Leader>fs*
+<Leader>fs                                                               ~
+    Open an fzf picker over every known binding.  Only created when fzf is
+    detected at filetype-load time.  Calls |:SpecFlowFzfBindings|.
+
+==============================================================================
+6. MATCHING SEMANTICS                                     *specflow-matching*
+
+The helper compiles every binding pattern with the Rust `regex` crate and
+anchors the match with `^...$`, mirroring SpecFlow's runtime behaviour.
+
+For `Given`/`When`/`Then` step lines, only bindings of the matching kind are
+considered.  For `And`/`But` lines, the plugin walks backwards through the
+buffer to inherit the kind of the most recent concrete step in the current
+scenario, matching SpecFlow's own inheritance rule.  Inheritance resets at
+each `Scenario:`, `Background:`, `Examples:`, `Rule:`, or `Feature:`
+opener.
+
+Supported pattern features include alternations, named captures
+(`(?<name>...)`), non-capturing groups (`(?:...)`), character classes,
+quoted and unquoted captures, optional trailing groups
+(e.g. `((?: as the user|))`), and verbatim escaped quotes (`""(.*)""`).
+
+Trailing colons on data-table steps are preserved end-to-end, so a step
+written as `When I run 'foo' with the following:` matches a binding
+declared as `[When(@"I run '(.*)' with the following:")]`.
+
+==============================================================================
+7. CACHE MANAGEMENT                                          *specflow-cache*
+
+The helper maintains an on-disk binding index, keyed by
+`(file path, mtime, size)`.  Subsequent invocations re-parse only files
+that have changed.
+
+Cache location (in order of preference):
+
+  - `$XDG_CACHE_HOME/vim-specflow/`
+  - `%LOCALAPPDATA%\vim-specflow\`  (Windows)
+  - `$HOME/.cache/vim-specflow/`
+  - `%USERPROFILE%\AppData\Local\vim-specflow\`  (Windows fallback)
+
+The filename within that directory is a hash of the canonical root path,
+so multiple repositories coexist without colliding.
+
+Saving a `.cs` file triggers a refresh of any open `.feature` buffers via
+|BufWritePost|.
+
+Use |:SpecFlowClearCache| to delete the cache directory entirely.
+
+==============================================================================
+8. FZF INTEGRATION                                             *specflow-fzf*
+
+When fzf.vim (or the base fzf plugin) is detected at filetype-load time —
+specifically, when `g:loaded_fzf` is set or `fzf#run` is defined — the
+plugin sets the buffer-local mapping |specflow-<Leader>fs| and the
+command |:SpecFlowFzfBindings| becomes useful.
+
+The picker shows one line per binding in the form: >
+
+    [Kind] pattern
+
+On selection, the plugin opens the C# file at the binding's line.
+
+Without fzf, the command prints a friendly message and does nothing.
+
+==============================================================================
+9. TROUBLESHOOTING                                  *specflow-troubleshooting*
+
+Helper not found~
+    On first use, if the binary at |g:specflow_helper_path| does not exist
+    or is not executable, the plugin prints: >
+
+        specflow: helper not found at <path>
+                  run <plugin>/bin/build_helper.sh
+<
+    Run the build script as described in |specflow-installation|.
+
+No binding found~
+    `:SpecFlowJumpToBinding` prints `specflow: no binding for: <step>`
+    when the step text does not match any indexed pattern.  Check that:
+
+      - |g:specflow_root| points at the right directory
+      - The binding's C# source file is under that root
+      - The pattern actually matches — try the helper from the shell: >
+
+            specflow-helper resolve --root <dir> --kind Given --step "..."
+<
+Highlight is stale~
+    Mtime caching should handle most cases.  If you've moved files around
+    or suspect cache corruption, run |:SpecFlowClearCache|.
+
+==============================================================================
+10. ARCHITECTURE                                       *specflow-architecture*
+
+The plugin has two parts:
+
+  1. A thin VimScript shim (~200 lines) in `plugin/specflow.vim` that
+     extracts the step text under the cursor, walks for And/But
+     inheritance, and shells out to the helper.
+
+  2. A Rust binary (`specflow-helper`) that walks the binding root, parses
+     C# `[Given/When/Then(...)]` attributes (both verbatim and regular
+     string forms), maintains the mtime-keyed cache, and runs regex
+     matching.
+
+The two communicate via JSON on stdin/stdout.  Subcommands:
+
+  resolve   one step in, one binding out (used by |CTRL-]|)
+  scan      a feature file in, every step's resolution out
+            (used by the unbound-step highlighter)
+  list      every binding out, one per line
+            (used by |:SpecFlowFzfBindings|)
+
+==============================================================================
+vim:tw=78:ts=8:sw=4:et:ft=help:norl:
