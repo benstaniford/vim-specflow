@@ -132,6 +132,10 @@ function! s:HighlightUnbound() abort
         return
     endif
     if !s:HelperReady()
+        if !get(s:, 'warned_missing', 0)
+            call s:WarnMissingHelper()
+            let s:warned_missing = 1
+        endif
         return
     endif
     silent! call clearmatches()
@@ -180,8 +184,16 @@ command! SpecFlowHighlightUnbound call s:HighlightUnbound()
 command! SpecFlowClearCache call s:ClearCache()
 command! SpecFlowClearHighlight call clearmatches()
 
+" .feature files are commonly detected as either 'specflow' (our ftdetect)
+" or 'cucumber' (Neovim's built-in). Bind <C-]> on both so the user lands
+" on the right side regardless of which detector won.
+function! s:SetupBufferMappings() abort
+    nnoremap <buffer> <silent> <C-]> :SpecFlowJumpToBinding<CR>
+endfunction
+
 augroup SpecFlowPlugin
     autocmd!
+    autocmd FileType specflow,cucumber call s:SetupBufferMappings()
     autocmd FileType specflow,cucumber call s:HighlightUnbound()
     autocmd BufRead,BufNewFile *.feature call s:HighlightUnbound()
     autocmd BufWritePost *.feature call s:HighlightUnbound()
